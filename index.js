@@ -42,7 +42,7 @@ const verifySeller = async (req, res, next) => {
   const email = req.decoded.email;
   const query = { email: email };
   const user = await userCollection.findOne(query);
-  if (user?.role !== "seller") {
+  if (user?.role !== "seller" ) {
     return res.send({ message: "Forbidden Access" });
   }
   next();
@@ -215,6 +215,37 @@ async function run() {
         {
           $pull: { cart: new ObjectId(String(productId)) },
         }
+      );
+      res.send(result);
+    });
+
+    // Get Products by Seller
+    app.get("/my-products", verifyJWT, verifySeller, async (req, res) => {
+      const email = req.decoded.email;
+      const products = await productCollection
+        .find({ sellerEmail: email })
+        .toArray();
+      res.send(products);
+    });
+
+    // Delete Product by ID
+    app.delete("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
+      const { id } = req.params;
+
+      const result = await productCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+    // Update Product by ID
+    app.patch("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+
+      const result = await productCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
       );
       res.send(result);
     });
