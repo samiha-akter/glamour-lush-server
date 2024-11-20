@@ -64,7 +64,6 @@ const productCollection = db.collection("products");
 
 async function run() {
   try {
-
     // Insert Contact Message
     app.post("/contact", async (req, res) => {
       const messageData = req.body;
@@ -172,12 +171,53 @@ async function run() {
       const result = await userCollection.updateOne(
         { email: userEmail },
         {
-          $pull : { wishlist: new ObjectId(String(productId)) },
+          $pull: { wishlist: new ObjectId(String(productId)) },
         }
       );
       res.send(result);
     });
 
+    // Cart Add
+    app.patch("/cart/add", verifyJWT, async (req, res) => {
+      const { userEmail, productId } = req.body;
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        {
+          $addToSet: { cart: new ObjectId(String(productId)) },
+        }
+      );
+      res.send(result);
+    });
+
+    // Get Cart Data
+    app.get("/cart/:userId", verifyJWT, async (req, res) => {
+      const { userId } = req.params;
+      const user = await userCollection.findOne({
+        _id: new ObjectId(String(userId)),
+      });
+      if (!user) {
+        return res.send({ message: "User Not Found" });
+      }
+      const cart = await productCollection
+        .find({
+          _id: { $in: user.cart || [] },
+        })
+        .toArray();
+
+      res.send(cart);
+    });
+
+    // Cart Remove
+    app.patch("/cart/remove", verifyJWT, async (req, res) => {
+      const { userEmail, productId } = req.body;
+      const result = await userCollection.updateOne(
+        { email: userEmail },
+        {
+          $pull: { cart: new ObjectId(String(productId)) },
+        }
+      );
+      res.send(result);
+    });
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
   }
