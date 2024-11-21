@@ -42,7 +42,18 @@ const verifySeller = async (req, res, next) => {
   const email = req.decoded.email;
   const query = { email: email };
   const user = await userCollection.findOne(query);
-  if (user?.role !== "seller" ) {
+  if (user?.role !== "seller" && user?.status === "pending") {
+    return res.send({ message: "Forbidden Access" });
+  }
+  next();
+};
+
+// admin verification
+const verifyAdmin = async (req, res, next) => {
+  const email = req.decoded.email;
+  const query = { email: email };
+  const user = await userCollection.findOne(query);
+  if (user?.role !== "admin") {
     return res.send({ message: "Forbidden Access" });
   }
   next();
@@ -249,6 +260,65 @@ async function run() {
       );
       res.send(result);
     });
+
+
+
+    // Get Users for Admin
+    app.get("/all-users", verifyJWT, verifyAdmin, async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
+    });
+
+     // Delete User
+     // Delete User and associated products
+app.delete("/all-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+  const { id } = req.params;
+  const user = await userCollection.findOne({ _id: new ObjectId(id) });
+  if (!user) {
+    return res.status(404).send({ message: "User not found" });
+  }
+  const sellerEmail = user.email;
+    const userDeletionResult = await userCollection.deleteOne({
+      _id: new ObjectId(id),
+    });
+
+    if (userDeletionResult.deletedCount === 0) {
+      return res.status(500).send({ message: "Failed to delete user" });
+    }
+
+    // Delete all products associated with the sellerEmail
+    const productDeletionResult = await productCollection.deleteMany({
+      sellerEmail: sellerEmail,
+    });
+
+    res.send({
+      message: "User and associated products deleted successfully",
+      userDeletionCount: userDeletionResult.deletedCount,
+      productDeletionCount: productDeletionResult.deletedCount,
+    });
+  
+});
+
+
+    // Update User Role or Status
+    app.patch("/all-users/:id", verifyJWT, verifySeller, async (req, res) => {
+      const { id } = req.params;
+      const updatedData = req.body;
+
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
+      );
+      res.send(result);
+    });
+
+
+
+
+
+
+    
+    
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
   }
