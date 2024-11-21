@@ -26,7 +26,6 @@ app.use(cors(corsOptions));
 const verifyJWT = (req, res, next) => {
   // console.log("Authorization Header:", req.headers);
   const authorization = req.headers.authorization;
-
   if (!authorization) {
     return res.send({ message: "No Token" });
   }
@@ -114,7 +113,7 @@ async function run() {
     // Route to get product by ID
     app.get("/products", async (req, res) => {
       const { id } = req.query; // Get the ID from query parameters
-      const product = await productCollection.findOne( {
+      const product = await productCollection.findOne({
         _id: new ObjectId(String(id)),
       });
       res.json({ product });
@@ -270,7 +269,7 @@ async function run() {
     app.patch("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
-      
+
       const result = await productCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updatedData }
@@ -329,18 +328,21 @@ async function run() {
 }
 run().catch(console.dir);
 
-// JWT
+// JWT Authentication
 app.post("/authentication", async (req, res) => {
   const userEmail = req.body;
   const token = jwt.sign(userEmail, process.env.ACCESS_KEY_TOKEN, {
-    expiresIn: '10d',
+    expiresIn: "10d",
   });
-  res.send({token});
+  res.send({ token });
 });
+
+// Basic Get
 app.get("/", (req, res) => {
   res.send("Glamour Lush is Running");
 });
 
+// App Listen
 app.listen(port, () => {
   console.log(`Server is running on port: ${port}`);
 });
