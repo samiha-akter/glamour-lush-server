@@ -270,7 +270,7 @@ async function run() {
     app.patch("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
       const { id } = req.params;
       const updatedData = req.body;
-
+      
       const result = await productCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updatedData }
@@ -285,7 +285,6 @@ async function run() {
     });
 
     // Delete User
-    // Delete User and associated products
     app.delete("/all-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       const { id } = req.params;
       const user = await userCollection.findOne({ _id: new ObjectId(id) });
@@ -334,9 +333,9 @@ run().catch(console.dir);
 app.post("/authentication", async (req, res) => {
   const userEmail = req.body;
   const token = jwt.sign(userEmail, process.env.ACCESS_KEY_TOKEN, {
-    expiresIn: process.env.TOKEN_EXPIRATION,
+    expiresIn: '10d',
   });
-  res.send({ token });
+  res.send({token});
 });
 app.get("/", (req, res) => {
   res.send("Glamour Lush is Running");
