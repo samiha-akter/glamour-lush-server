@@ -9,15 +9,18 @@ const url = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 
 // middleware
 app.use(express.json());
-app.use(
-  cors({
-    origin: [`${process.env.BASE_URL}`],
-    optionsSuccessStatus: 200,
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"], // Allow Authorization header
-    methods: ["GET", "POST", "PATCH", "DELETE"],
-  })
-);
+
+const corsOptions = {
+  origin: [
+    "https://glamour-lush-client.vercel.app",
+    "http://localhost:5173",
+    "glamour-lush.web.app",
+  ], // Frontend domain
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
 // token verification
 const verifyJWT = (req, res, next) => {
@@ -106,6 +109,15 @@ async function run() {
       const product = req.body;
       const result = await productCollection.insertOne(product);
       res.send(result);
+    });
+
+    // Route to get product by ID
+    app.get("/products", async (req, res) => {
+      const { id } = req.query; // Get the ID from query parameters
+      const product = await productCollection.findOne( {
+        _id: new ObjectId(String(id)),
+      });
+      res.json({ product });
     });
 
     // Getting All Products
@@ -240,14 +252,19 @@ async function run() {
     });
 
     // Delete Product by ID
-    app.delete("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
-      const { id } = req.params;
+    app.delete(
+      "/my-products/:id",
+      verifyJWT,
+      verifySeller,
+      async (req, res) => {
+        const { id } = req.params;
 
-      const result = await productCollection.deleteOne({
-        _id: new ObjectId(id),
-      });
-      res.send(result);
-    });
+        const result = await productCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      }
+    );
 
     // Update Product by ID
     app.patch("/my-products/:id", verifyJWT, verifySeller, async (req, res) => {
@@ -261,44 +278,40 @@ async function run() {
       res.send(result);
     });
 
-
-
     // Get Users for Admin
     app.get("/all-users", verifyJWT, verifyAdmin, async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
 
-     // Delete User
-     // Delete User and associated products
-app.delete("/all-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
-  const { id } = req.params;
-  const user = await userCollection.findOne({ _id: new ObjectId(id) });
-  if (!user) {
-    return res.status(404).send({ message: "User not found" });
-  }
-  const sellerEmail = user.email;
-    const userDeletionResult = await userCollection.deleteOne({
-      _id: new ObjectId(id),
+    // Delete User
+    // Delete User and associated products
+    app.delete("/all-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const { id } = req.params;
+      const user = await userCollection.findOne({ _id: new ObjectId(id) });
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+      const sellerEmail = user.email;
+      const userDeletionResult = await userCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+
+      if (userDeletionResult.deletedCount === 0) {
+        return res.status(500).send({ message: "Failed to delete user" });
+      }
+
+      // Delete all products associated with the sellerEmail
+      const productDeletionResult = await productCollection.deleteMany({
+        sellerEmail: sellerEmail,
+      });
+
+      res.send({
+        message: "User and associated products deleted successfully",
+        userDeletionCount: userDeletionResult.deletedCount,
+        productDeletionCount: productDeletionResult.deletedCount,
+      });
     });
-
-    if (userDeletionResult.deletedCount === 0) {
-      return res.status(500).send({ message: "Failed to delete user" });
-    }
-
-    // Delete all products associated with the sellerEmail
-    const productDeletionResult = await productCollection.deleteMany({
-      sellerEmail: sellerEmail,
-    });
-
-    res.send({
-      message: "User and associated products deleted successfully",
-      userDeletionCount: userDeletionResult.deletedCount,
-      productDeletionCount: productDeletionResult.deletedCount,
-    });
-  
-});
-
 
     // Update User Role or Status
     app.patch("/all-users/:id", verifyJWT, verifySeller, async (req, res) => {
@@ -311,14 +324,6 @@ app.delete("/all-users/:id", verifyJWT, verifyAdmin, async (req, res) => {
       );
       res.send(result);
     });
-
-
-
-
-
-
-    
-    
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
   }
