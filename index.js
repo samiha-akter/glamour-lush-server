@@ -146,10 +146,11 @@ async function run() {
         .sort({ price: sortOption })
         .toArray();
 
+      const prod = await productCollection.find().toArray();
       const totalProducts = await productCollection.countDocuments(query);
-      const brands = [...new Set(products.map((product) => product.brand))];
+      const brands = [...new Set(prod.map((product) => product.brand))];
       const categories = [
-        ...new Set(products.map((product) => product.category)),
+        ...new Set(prod.map((product) => product.category)),
       ];
 
       res.json({ products, brands, categories, totalProducts });
