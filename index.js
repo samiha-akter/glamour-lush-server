@@ -15,7 +15,7 @@ const corsOptions = {
     "https://glamour-lush-client.vercel.app",
     "http://localhost:5173",
     "glamour-lush.web.app",
-  ], // Frontend domain
+  ],
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   credentials: true,
   optionsSuccessStatus: 200,
@@ -70,6 +70,8 @@ const client = new MongoClient(url, {
   },
 });
 
+
+// Database Declared
 const db = client.db("glamour-lush");
 const contactCollection = db.collection("contact");
 const userCollection = db.collection("users");
@@ -77,7 +79,7 @@ const productCollection = db.collection("products");
 
 async function run() {
   try {
-    // Insert Contact Message
+    // Contact Messages Store
     app.post("/contact", async (req, res) => {
       const messageData = req.body;
       const result = await contactCollection.insertOne(messageData);
@@ -110,9 +112,9 @@ async function run() {
       res.send(result);
     });
 
-    // Route to get product by ID
+    // Get product by ID
     app.get("/products", async (req, res) => {
-      const { id } = req.query; // Get the ID from query parameters
+      const { id } = req.query;
       const product = await productCollection.findOne({
         _id: new ObjectId(String(id)),
       });
@@ -143,10 +145,6 @@ async function run() {
         .limit(limitNumber)
         .sort({ price: sortOption })
         .toArray();
-
-      // const productInfo = await productCollection
-      //   .find({}, { projection: { category: 1, brand: 1 } })
-      //   .toArray();
 
       const totalProducts = await productCollection.countDocuments(query);
       const brands = [...new Set(products.map((product) => product.brand))];
